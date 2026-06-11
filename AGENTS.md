@@ -1,114 +1,92 @@
-# Kommuvo Agent Instructions
+# Barriereblick – Agent Instructions
 
-## Workspace-Struktur
+## Projekt
 
-Dieses Workspace enthält zwei Repositories:
+Barriereblick ist ein Monitoring-SaaS für Webagenturen: kontinuierliche, automatisierte
+Barrierefreiheits-Scans (axe-core) von Kundenwebsites, White-Label-Berichte,
+Regression-Alerts. Architektur und Datenmodell: siehe `ai/architektur.md` (verbindlich).
 
-- `handwerkbot-java/`: Java Spring Boot Backend
-- `handwerkbot-frontend/`: Angular Frontend
+WICHTIGE PRODUKTREGEL: Das Produkt behauptet NIEMALS Rechtskonformität. In UI-Texten,
+Berichten, E-Mails und Code-Kommentaren immer "keine maschinell erkennbaren Fehler
+gefunden" / "Monitoring & Dokumentation" – nie "BFSG-konform", "rechtssicher" o. Ä.
 
-Arbeite immer mit Blick auf beide Repos. Wenn eine Änderung Frontend und Backend betrifft, prüfe API-Verträge, DTOs, Validierung, Fehlerfälle und Tests auf beiden Seiten.
+## Workspace-Struktur (Monorepo)
+
+- `api/` – Spring Boot 3 / Java 21 Backend (REST, Auth, Scheduler, Postgres + Flyway)
+- `web/` – Angular 19 Frontend (Dashboard)
+- `worker/` – Node.js 22 / TypeScript Scan-Worker (Playwright + @axe-core/playwright)
+- `ai/` – Architektur (`architektur.md`), Task-Files (`tasks/`), Briefing
+- `rules/ecc/` – Coding-Regeln, werden über CLAUDE.md-Imports geladen
+
+Bei Änderungen, die mehrere Module betreffen: API-Verträge, DTOs, Validierung,
+Fehlerfälle und Tests auf allen betroffenen Seiten prüfen.
 
 ## Allgemeine Arbeitsweise
 
-- Erst planen, dann Code ändern.
-- Keine großen Refactorings ohne Begründung.
-- Keine Secrets, Tokens, `.env`-Dateien, Zertifikate oder private Schlüssel lesen, verändern oder ausgeben.
-- Kein `git push`, kein Deployment und keine produktionsnahen Änderungen ohne explizite Freigabe.
-- Kleine, nachvollziehbare Änderungen bevorzugen.
-- Am Ende immer nennen:
-    - was geändert wurde,
-    - welche Tests sinnvoll sind,
-    - welche Risiken offen bleiben.
+- Erst planen, dann Code ändern. Tasks aus `ai/tasks/` sind die Arbeitsgrundlage.
+- Der Block "Nicht in Scope" in jedem Task-File ist verbindlich. Nichts darüber hinaus
+  bauen, auch wenn es naheliegend erscheint.
+- Keine großen Refactorings ohne Begründung. Kleine, nachvollziehbare Änderungen.
+- Keine Secrets, Tokens, `.env`-Dateien, Zertifikate oder private Schlüssel lesen,
+  verändern oder ausgeben.
+- Kein `git push`, kein Deployment, keine produktionsnahen Änderungen ohne explizite
+  Freigabe.
+- Am Ende immer nennen: was geändert wurde, welche Tests sinnvoll sind, welche Risiken
+  offen bleiben.
 
-## Backend-Regeln
+## Backend-Regeln (`api/`)
 
-Gilt für Dateien unter `handwerkbot-java/`.
+- Controller dünn, Businesslogik in Services, Repositories datenbanknah.
+- DTOs, API-Modelle und Entities sauber trennen. Eingaben an API-Grenzen validieren.
+- Multi-Tenancy: JEDE Query auf mandantenfähige Tabellen filtert über `org_id` aus dem
+  JWT. Kein Endpoint darf Daten fremder Organisationen liefern – bei jedem neuen
+  Endpoint einen Test dafür ergänzen.
+- Fehler zentral behandeln, keine technischen Exceptions ans Frontend.
+- Transaktionen bewusst setzen. DB-Änderungen nur per Flyway-Migration,
+  rückwärtskompatibel.
+- Tests für neue Businesslogik verpflichtend (JUnit, Mockito, Testcontainers).
 
-Tech-Stack:
-- Java
-- Spring Boot
-- JUnit
-- Mockito
-- relationale Datenbank
+## Frontend-Regeln (`web/`)
 
-Regeln:
-- Controller bleiben dünn.
-- Businesslogik gehört in Services.
-- Repository-Code bleibt datenbanknah und enthält keine komplexe Fachlogik.
-- DTOs, API-Modelle und Entities sauber trennen.
-- Eingaben an API-Grenzen validieren.
-- Fehler zentral und nachvollziehbar behandeln.
-- Keine technischen Exceptions ungefiltert an das Frontend geben.
-- Transaktionen bewusst setzen.
-- Tests für neue Businesslogik ergänzen.
-- Bei Datenbankänderungen Migrationen und Rückwärtskompatibilität beachten.
+- Standalone Components, Observables, async pipe, `takeUntilDestroyed()`.
+- Keine Angular Signals einführen (bewusste Projektentscheidung für Konsistenz).
+- API-Zugriffe über Services kapseln. Komponenten klein, lesbar, testbar.
+- Loading-, Empty- und Error-States immer berücksichtigen.
+- Accessibility ist hier Produkt-DNA: semantisches HTML, Labels, Tastaturbedienung,
+  Kontraste. Unser eigenes Dashboard muss bestehen, was wir bei anderen anmahnen.
 
-## Frontend-Regeln
+## Worker-Regeln (`worker/`)
 
-Gilt für Dateien unter `handwerkbot-frontend/`.
+- Node.js 22, TypeScript (KEIN CommonJS-Zwang – ältere ecc-Hinweise dazu ignorieren).
+- Browser-Ressourcen IMMER aufräumen (try/finally um Playwright-Kontexte), Timeouts
+  setzen, klare Exit-Codes.
+- Höflichkeit gegenüber gescannten Sites: Delays pro Domain, identifizierbarer
+  User-Agent, robots.txt respektieren (ab M1).
+- Keine ungekürzten HTML-Snippets persistieren (max. 300 Zeichen, Datensparsamkeit).
+- Job-Claiming nur über `SELECT ... FOR UPDATE SKIP LOCKED` auf `scan_jobs`.
 
-Tech-Stack:
-- Angular
-- TypeScript
-- RxJS
-- Angular Forms
-- Jest oder Angular Test Utilities
-- optional Cypress/Playwright für E2E
+## API-Verträge (modulübergreifend)
 
-Regeln:
-- Verwende Observables, async pipe und `takeUntilDestroyed()`.
-- Keine Angular Signals vorschlagen oder einführen.
-- API-Zugriffe über Services kapseln.
-- Komponenten klein, lesbar und testbar halten.
-- Loading-, Empty- und Error-States berücksichtigen.
-- Keine verschachtelten Subscriptions ohne guten Grund.
-- Keine Logik doppelt in mehreren Komponenten implementieren.
-- Fehler im UI verständlich anzeigen.
-- Accessibility beachten: Labels, Tastaturbedienung, ARIA nur wenn sinnvoll.
-
-## API-Verträge
-
-Wenn Backend und Frontend betroffen sind:
-
-- Prüfe Request-/Response-DTOs.
-- Prüfe Statuscodes.
-- Prüfe Fehlerfälle.
-- Prüfe Validierungsfehler.
-- Prüfe, ob Frontend-Modelle zur Backend-API passen.
-- Schlage Tests für beide Seiten vor.
+Wenn api/ und web/ betroffen sind: Request-/Response-DTOs, Statuscodes, Fehlerfälle,
+Validierungsfehler und Frontend-Modelle gegeneinander prüfen; Tests beidseitig vorschlagen.
 
 ## Teststrategie
 
-Bei jeder Feature-Änderung prüfen:
+- Backend: Unit-Tests für Businesslogik, Integrationstests (Testcontainers) für API/Repo.
+- Frontend: Component-Tests für UI-Logik, Service-Tests für API-Handling.
+- Worker: Tests gegen lokale HTML-Fixtures mit absichtlichen a11y-Fehlern.
+- E2E nur für kritische Hauptflows (frühestens nach M2).
 
-Backend:
-- Unit-Test für Businesslogik
-- Integrationstest für API oder Repository, falls sinnvoll
+## Railway / Deployment
 
-Frontend:
-- Component-Test für UI-Logik
-- Service-Test für API-Handling
-- E2E-Test nur für kritische Hauptflows
-
-## Railway / Deployment-Regeln
-
-- Railway MCP darf zur Analyse von Projekten, Services, Environments, Deployments und Logs genutzt werden.
-- Keine Deployments ohne explizite Freigabe.
+- Railway MCP nur zur Analyse (Projekte, Services, Deployments, Logs).
+- Keine Deployments, keine Änderungen an Environment Variables ohne explizite Anweisung.
 - Keine Environment Variables oder Secrets ausgeben.
-- Environment Variables dürfen nur auf ausdrückliche Anweisung geändert werden.
-- Bei Produktionsproblemen zuerst Logs und Deployment-Status analysieren, dann Hypothesen bilden, dann Maßnahmen vorschlagen.
-- Vor jedem Deployment Build, Tests, Start-Command, Healthcheck und Risiken prüfen.
+- Bei Problemen: erst Logs und Deployment-Status analysieren, dann Hypothesen,
+  dann Maßnahmen vorschlagen.
 
 ## Code-Review-Kriterien
 
-Achte besonders auf:
-
-- Security
-- Verständlichkeit
-- Testbarkeit
-- Performance
-- Fehlerbehandlung
-- API-Kompatibilität
-- unnötige Komplexität
-- fehlende Edge Cases
+Besonders achten auf: Security (v. a. Org-Scoping, JWT-Handling), Verständlichkeit,
+Testbarkeit, Fehlerbehandlung, Ressourcen-Cleanup im Worker, API-Kompatibilität,
+unnötige Komplexität, fehlende Edge Cases.
