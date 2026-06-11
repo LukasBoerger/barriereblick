@@ -1,0 +1,40 @@
+<main class="login-container">
+  <section class="login-card" aria-labelledby="login-heading">
+    <h1 id="login-heading">Barriereblick</h1>
+    <form (ngSubmit)="onLogin()">
+      <div class="form-group">
+        <label for="email">E-Mail</label>
+        <input
+          id="email"
+          type="email"
+          [(ngModel)]="email"
+          name="email"
+          required
+          autocomplete="email"
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Passwort</label>
+        <input
+          id="password"
+          type="password"
+          [(ngModel)]="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          [disabled]="isLoading"
+        />
+      </div>
+
+      <button type="submit" [disabled]="isLoading">
+        {{ isLoading ? 'Anmeldung läuft…' : 'Anmelden' }}
+      </button>
+
+      <p *ngIf="errorMessage" class="error-message" role="alert">
+        {{ errorMessage }}
+      </p>
+    </form>
+  </section>
+</main>

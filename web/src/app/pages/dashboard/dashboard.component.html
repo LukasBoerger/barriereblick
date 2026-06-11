@@ -1,0 +1,16 @@
+<main class="dashboard-container">
+  <header class="dashboard-header">
+    <h1>Dashboard</h1>
+    <button type="button" class="logout-btn" (click)="onLogout()">Abmelden</button>
+  </header>
+
+  <p *ngIf="isLoading" class="loading" role="status">Lädt…</p>
+
+  <p *ngIf="!isLoading && errorMessage" class="error-message" role="alert">
+    {{ errorMessage }}
+  </p>
+
+  <section *ngIf="me$ | async as me" class="user-info" aria-label="Angemeldeter Benutzer">
+    <p>Eingeloggt als <strong>{{ me.user.email }}</strong> ({{ me.organization.name }})</p>
+  </section>
+</main>

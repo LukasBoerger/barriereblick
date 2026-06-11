@@ -1,0 +1,60 @@
+# Barriereblick API – gemeinsame Konfiguration + Profile local/prod.
+# Schema-Aenderungen NUR per Flyway-Migration (ddl-auto: validate).
+#
+# BEWUSST KEIN Default-Profil (Fail-Safe): Ohne explizites Profil fehlen
+# Datasource und JWT-Secret, die App startet nicht. Damit kann ein Deployment,
+# das SPRING_PROFILES_ACTIVE=prod vergisst, nie still mit dem eingecheckten
+# Dev-Secret laufen. Lokal starten mit: SPRING_PROFILES_ACTIVE=local
+spring:
+  application:
+    name: barriereblick-api
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+app:
+  jwt:
+    expiry: 24h
+
+---
+# Profil "local" – lokale Entwicklung.
+# Alle Defaults sind ausschliesslich fuer die lokale Entwicklung gedacht und
+# per Env-Variable ueberschreibbar.
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/barriereblick}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+
+app:
+  jwt:
+    # DEV-ONLY-Default (>= 32 Bytes), NIEMALS in prod verwenden.
+    # In prod gibt es bewusst keinen Fallback (siehe Profil prod).
+    secret: ${JWT_SECRET:barriereblick-local-dev-only-secret-not-for-production-use}
+  cors:
+    frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+
+---
+# Profil "prod" – Railway. Aktivieren via SPRING_PROFILES_ACTIVE=prod.
+# ACHTUNG Railway: DATABASE_URL muss im JDBC-Format gesetzt werden:
+#   jdbc:postgresql://HOST:PORT/DB?user=USER&password=PASSWORT
+# Railway liefert nativ "postgres://..." – das versteht der JDBC-Treiber NICHT.
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DATABASE_URL}
+
+app:
+  jwt:
+    # Kein Default: fehlt JWT_SECRET, verweigert JwtConfig den Start mit klarer Meldung.
+    secret: ${JWT_SECRET:}
+  cors:
+    frontend-origin: ${FRONTEND_ORIGIN}
