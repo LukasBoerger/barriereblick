@@ -1,0 +1,25 @@
+{
+  "name": "barriereblick-worker",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Scan-Worker: laedt eine URL mit Playwright und fuehrt axe-core aus.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "scan": "tsx src/scan.ts",
+    "test": "vitest run",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.22.4",
+    "typescript": "~5.7.2",
+    "vitest": "^4.1.8"
+  }
+}
